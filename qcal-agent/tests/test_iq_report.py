@@ -11,7 +11,8 @@ import unittest
 from qmagent.contracts import DEFAULT_STATE
 from qmagent.iq_report import analyze_iq, from_trajectory, render_iq_report
 from qmagent.report_preview import save_preview
-from qmagent.simulator import AnalyticSimulator, iq_gate
+from qmagent.analysis_tools import iq_gate
+from qmagent.physical_backend import PhysicalSimulator
 from qmagent.session import CalibrationSession
 from qmagent.service import AgentService
 from qmagent.settings import Settings
@@ -19,7 +20,7 @@ from qmagent.settings import Settings
 
 class IQReportTests(unittest.TestCase):
     def measurement(self):
-        return AnalyticSimulator(20260904).measure("sq.iqraw", dict(DEFAULT_STATE), {})["measurement"]
+        return PhysicalSimulator(20260904).measure("sq.iqraw", dict(DEFAULT_STATE), {})["measurement"]
 
     def test_same_controller_gate_and_no_state_error_claim(self):
         data = self.measurement()

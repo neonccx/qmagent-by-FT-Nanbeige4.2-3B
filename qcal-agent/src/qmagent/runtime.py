@@ -10,7 +10,7 @@ from collections import Counter
 from .contracts import (CALIBRATION_STAGES, ContractError, DEFAULT_STATE, IQ_THRESHOLDS, XEB_THRESHOLDS,
                         SCAN_KEYS, SCAN_LIMITS, STATE_LIMITS, TOOLS, parse_decision,
                         validate_observation, validate_scan)
-from .simulator import iq_gate
+from .analysis_tools import iq_gate
 
 
 def _close(a: float, b: float, tolerance: float) -> bool:

@@ -33,8 +33,6 @@ class Settings:
         result = cls(**value)
         if result.backend not in ("auto", "hardware", "physical", "legacy") or result.simulation_profile not in ("nominal", "drift", "quasistatic", "ambiguous"):
             raise ValueError("Invalid backend/profile")
-        if result.backend == "legacy" and result.simulation_profile != "nominal":
-            raise ValueError("Legacy simulator supports only nominal profile")
         if type(result.fit_update_tool) is not bool:
             raise ValueError("fit_update_tool must be boolean")
         if result.policy not in ("rule", "hf", "remote") or type(result.trust_remote_code) is not bool:

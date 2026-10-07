@@ -11,14 +11,49 @@ from scipy.optimize import least_squares, curve_fit
 from scipy.signal import find_peaks, savgol_filter
 
 from .physics import complex_notch, PHYSICS_VERSION, SOURCES
-from .simulator import iq_gate, r2
 from .storage import digest
-from .contracts import XEB_THRESHOLDS
+from .contracts import IQ_THRESHOLDS, XEB_THRESHOLDS
 
 ANALYSIS_VERSION = "analysis-power-flux-xeb-1.0"
 REGISTRY = {name: "analysis." + name.split(".")[1] for name in (
     "sq.s21", "sq.s21_power2d", "sq.s21_zpa2d", "sq.spectroscopy", "sq.piamp", "sq.ramsey_df",
     "sq.t1", "sq.t2_echo", "sq.xeb", "sq.iqraw")}
+
+
+def r2(y: np.ndarray, prediction: np.ndarray) -> float:
+    """Coefficient of determination used by deterministic fit assessment."""
+    denominator = float(np.sum((y - y.mean()) ** 2))
+    return float(1 - np.sum((y - prediction) ** 2) / denominator) if denominator > 1e-15 else 0.0
+
+
+def iq_gate(measurement: dict) -> dict:
+    """Fit on even shots and evaluate on odd shots, separately per prepared state."""
+    points = np.column_stack([measurement["i"], measurement["q"]])
+    labels = np.asarray(measurement["prepared_state"])
+    if len(labels) != len(points) or not np.isfinite(points).all() or not np.isin(labels, [0, 1]).all():
+        raise ValueError("Malformed IQ observations")
+    groups = [points[labels == label] for label in (0, 1)]
+    if any(len(group) < 128 for group in groups):
+        raise ValueError("At least 128 shots per prepared state required")
+    means = [group[::2].mean(axis=0) for group in groups]
+    axis = means[1] - means[0]
+    norm = float(np.linalg.norm(axis))
+    if norm < 1e-12:
+        return {"passed": False, "checks": {}, "reason": "Degenerate training centroids"}
+    axis /= norm
+    threshold = float((means[0] + means[1]) @ axis / 2)
+    p0, p1 = [group[1::2] @ axis for group in groups]
+    f0, f1 = float(np.mean(p0 < threshold)), float(np.mean(p1 >= threshold))
+    metrics = {
+        "f0": f0, "f1": f1, "assignment_fidelity": (f0 + f1) / 2,
+        "visibility": f0 + f1 - 1,
+        "snr": float(abs(p1.mean() - p0.mean()) / np.sqrt(max(p0.var(ddof=1) + p1.var(ddof=1), 1e-12))),
+    }
+    checks = {key: metrics[key] >= limit for key, limit in IQ_THRESHOLDS.items()}
+    return {"passed": all(checks.values()), "metrics": metrics, "checks": checks,
+            "thresholds": dict(IQ_THRESHOLDS), "evaluation": "held_out_odd_shots",
+            "classifier": {"axis": axis.tolist(), "threshold": threshold},
+            "test_shots_per_state": [len(p0), len(p1)]}
 
 
 def _fit_curve(x, y, fn, guesses, bounds, names):

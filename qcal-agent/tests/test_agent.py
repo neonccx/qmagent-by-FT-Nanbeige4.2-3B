@@ -8,7 +8,8 @@ from qmagent.contracts import (ContractError, DEFAULT_STATE, TOOLS, decision,
                                parse_decision, validate_scan)
 from qmagent.policies import RulePolicy, model_context
 from qmagent.runtime import AgentRunner, invalidate, stage_passed
-from qmagent.simulator import AnalyticSimulator, iq_gate
+from qmagent.analysis_tools import iq_gate
+from qmagent.physical_backend import PhysicalSimulator
 
 
 class FixedPolicy:
@@ -67,20 +68,20 @@ class ContractTests(unittest.TestCase):
 
 class RuntimeTests(unittest.TestCase):
     def test_rule_full_loop(self):
-        result = AgentRunner(AnalyticSimulator(20260903), RulePolicy()).run()
+        result = AgentRunner(PhysicalSimulator(20260903), RulePolicy()).run()
         self.assertEqual(result["status"], "accepted")
         self.assertEqual(result["completed_stages"], list(TOOLS[:-1]))
         self.assertGreaterEqual(result["consecutive_iq_passes"], 2)
         self.assertTrue(result["final_iq_gate"]["passed"])
 
     def test_reproducible(self):
-        a = AgentRunner(AnalyticSimulator(123), RulePolicy()).run()
-        b = AgentRunner(AnalyticSimulator(123), RulePolicy()).run()
+        a = AgentRunner(PhysicalSimulator(123), RulePolicy()).run()
+        b = AgentRunner(PhysicalSimulator(123), RulePolicy()).run()
         self.assertEqual(a, b)
 
     def test_unknown_and_skip_and_finish_fail_closed(self):
         for tool in ("shell", "sq.iqraw", "sq.piamp", "FINISH"):
-            result = AgentRunner(AnalyticSimulator(), FixedPolicy(decision(tool))).run()
+            result = AgentRunner(PhysicalSimulator(), FixedPolicy(decision(tool))).run()
             with self.subTest(tool=tool):
                 self.assertEqual(result["status"], "invalid_action")
                 self.assertEqual(result["experiment_count"], 0)
@@ -92,7 +93,7 @@ class RuntimeTests(unittest.TestCase):
                 if context["consecutive_iq_passes"] == 1:
                     return decision("FINISH")
                 return super().decide(context)
-        result = AgentRunner(AnalyticSimulator(), EarlyPolicy()).run()
+        result = AgentRunner(PhysicalSimulator(), EarlyPolicy()).run()
         self.assertEqual(result["status"], "invalid_action")
         self.assertEqual(result["consecutive_iq_passes"], 1)
 
@@ -104,27 +105,27 @@ class RuntimeTests(unittest.TestCase):
                     self.changed = True
                     return decision("sq.iqraw", {"readout_amplitude": context["state"]["readout_amplitude"] + 0.00001})
                 return super().decide(context)
-        result = AgentRunner(AnalyticSimulator(), ChangePolicy()).run()
+        result = AgentRunner(PhysicalSimulator(), ChangePolicy()).run()
         iq = [event for event in result["events"] if event["event"] == "experiment" and event["tool"] == "sq.iqraw"]
         self.assertGreaterEqual(len(iq), 3)
         self.assertLessEqual(iq[1]["consecutive_iq_passes"], 1)
 
     def test_total_budget(self):
-        result = AgentRunner(AnalyticSimulator(), RulePolicy(), max_steps=1).run()
+        result = AgentRunner(PhysicalSimulator(), RulePolicy(), max_steps=1).run()
         self.assertEqual(result["status"], "budget_exhausted")
         self.assertEqual(result["experiment_count"], 1)
 
     def test_tool_budget(self):
-        result = AgentRunner(AnalyticSimulator(), FixedPolicy(decision("sq.s21")), max_tool_calls=2).run()
+        result = AgentRunner(PhysicalSimulator(), FixedPolicy(decision("sq.s21")), max_tool_calls=2).run()
         self.assertEqual(result["status"], "budget_exhausted")
         self.assertEqual(result["experiment_count"], 2)
 
     def test_escalation(self):
-        result = AgentRunner(AnalyticSimulator(), FixedPolicy(decision("ESCALATE_HARDWARE_REVIEW"))).run()
+        result = AgentRunner(PhysicalSimulator(), FixedPolicy(decision("ESCALATE_HARDWARE_REVIEW"))).run()
         self.assertEqual(result["status"], "escalated")
 
     def test_exception_rolls_back_state_and_rng(self):
-        class BrokenBackend(AnalyticSimulator):
+        class BrokenBackend(PhysicalSimulator):
             def measure(self, tool, state, scan):
                 self.rng.random(10)
                 raise RuntimeError("simulated failure")
@@ -144,12 +145,12 @@ class RuntimeTests(unittest.TestCase):
                 context["state"]["pi_amplitude"] = 100
                 return decision("ESCALATE_HARDWARE_REVIEW")
         policy = MutatingPolicy()
-        result = AgentRunner(AnalyticSimulator(), policy).run()
+        result = AgentRunner(PhysicalSimulator(), policy).run()
         self.assertEqual(result["final_state"], DEFAULT_STATE)
         self.assertNotIn("truth", json.dumps(policy.context))
 
     def test_nonfinite_observation_rejected(self):
-        class NonfiniteBackend(AnalyticSimulator):
+        class NonfiniteBackend(PhysicalSimulator):
             def measure(self, tool, state, scan):
                 obs = super().measure(tool, state, scan)
                 obs["measurement"]["i"][0] = float("nan")
@@ -158,12 +159,14 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(result["status"], "tool_error")
 
     def test_model_metrics_cannot_override_gate(self):
-        class LyingBackend(AnalyticSimulator):
-            def _iq(self, obs, state, scan):
-                super()._iq(obs, state, scan)
-                obs["measurement"]["i"] = [0.0] * len(obs["measurement"]["i"])
-                obs["measurement"]["q"] = [0.0] * len(obs["measurement"]["q"])
-                obs["acceptance"]["passed"] = True
+        class LyingBackend(PhysicalSimulator):
+            def measure(self, tool, state, scan):
+                obs = super().measure(tool, state, scan)
+                if tool == "sq.iqraw":
+                    obs["measurement"]["i"] = [0.0] * len(obs["measurement"]["i"])
+                    obs["measurement"]["q"] = [0.0] * len(obs["measurement"]["q"])
+                    obs["acceptance"]["passed"] = True
+                return obs
         result = AgentRunner(LyingBackend(), RulePolicy()).run()
         self.assertNotEqual(result["status"], "accepted")
         self.assertFalse(result["final_iq_gate"]["passed"])
@@ -193,7 +196,7 @@ class MeasurementTests(unittest.TestCase):
 
     def test_observation_has_no_oracle_and_measure_does_not_update_state(self):
         state = dict(DEFAULT_STATE)
-        backend = AnalyticSimulator()
+        backend = PhysicalSimulator()
         for tool in TOOLS:
             observation = backend.measure(tool, state, {})
             serialized = json.dumps(observation, allow_nan=False)
@@ -202,7 +205,7 @@ class MeasurementTests(unittest.TestCase):
             self.assertEqual(state, DEFAULT_STATE)
 
     def test_model_view_discloses_sampling_and_keeps_full_log(self):
-        observation = AnalyticSimulator().measure("sq.iqraw", DEFAULT_STATE, {})
+        observation = PhysicalSimulator().measure("sq.iqraw", DEFAULT_STATE, {})
         before = copy.deepcopy(observation)
         view = model_context({"observation": observation})
         self.assertNotIn("measurement", view["observation"])
@@ -217,7 +220,7 @@ class MeasurementTests(unittest.TestCase):
 
     def test_negative_noise_rejected(self):
         with self.assertRaises(ValueError):
-            AnalyticSimulator(noise_scale=-1)
+            PhysicalSimulator(noise_scale=-1)
 
 
 if __name__ == "__main__":

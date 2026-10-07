@@ -9,12 +9,9 @@ def make_backend(settings, seed=None):
             return backend
         if settings.backend == "hardware":
             raise RuntimeError("Hardware mode requested, but no healthy qcal_agent.hardware provider was detected")
-    if settings.backend == "physical":
+    if settings.backend in {"physical", "legacy"}:
         from .physical_backend import PhysicalSimulator
         return PhysicalSimulator(selected_seed, settings.noise_scale, settings.simulation_profile)
-    if settings.backend == "legacy":
-        from .simulator import AnalyticSimulator
-        return AnalyticSimulator(selected_seed, settings.noise_scale)
     if settings.backend == "auto":
         from .physical_backend import PhysicalSimulator
         return PhysicalSimulator(selected_seed, settings.noise_scale, settings.simulation_profile)

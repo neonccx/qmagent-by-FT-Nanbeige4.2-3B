@@ -10,7 +10,7 @@ from qmagent.policies import RulePolicy
 from qmagent.runtime import AgentRunner
 from qmagent.session import CalibrationSession, list_sessions, load_settings, save_settings
 from qmagent.settings import Settings
-from qmagent.simulator import AnalyticSimulator
+from qmagent.physical_backend import PhysicalSimulator
 from qmagent.storage import Journal, atomic_json, read_json, session_directory
 from qmagent.terminal import Terminal, safe_text
 

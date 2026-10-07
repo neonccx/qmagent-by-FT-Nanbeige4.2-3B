@@ -34,7 +34,7 @@ Interactive sessions support four backend settings:
   attached hardware.
 - `hardware`: require one healthy provider and fail startup if none is available.
 - `physical`: force the physics-based simulator.
-- `legacy`: force the old analytic simulator.
+- `legacy`: backward-compatible setting that selects the same `PhysicalSimulator` as `physical`.
 
 There is deliberately no mid-session fallback. If an attached device disconnects,
 the handler must raise and invoke safe shutdown; mixing simulated observations into

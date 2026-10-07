@@ -6,7 +6,7 @@ import unittest
 from qmagent.model_worker import ManagedPolicy
 from qmagent.runtime import AgentRunner
 from qmagent.settings import Settings
-from qmagent.simulator import AnalyticSimulator
+from qmagent.physical_backend import PhysicalSimulator
 
 
 def echo_worker(connection, options):
@@ -69,7 +69,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_model_error_is_policy_error_and_no_experiment(self):
         policy = self.policy(error_worker)
-        outcome = AgentRunner(AnalyticSimulator(), policy).run()
+        outcome = AgentRunner(PhysicalSimulator(), policy).run()
         self.assertEqual(outcome["status"], "policy_error")
         self.assertEqual(outcome["experiment_count"], 0)
         self.assertIn("fake model load failure", outcome["reason"])
