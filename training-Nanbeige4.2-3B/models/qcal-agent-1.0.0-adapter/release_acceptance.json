@@ -1,0 +1,25 @@
+{
+  "schema": "qcal-release-gate-1.0",
+  "checks": {
+    "test": {
+      "valid_call_rate": true,
+      "next_tool_accuracy": true,
+      "argument_accuracy": true,
+      "controller_executable_rate": true,
+      "no_next_tool_regression": true
+    },
+    "ood": {
+      "valid_call_rate": true,
+      "next_tool_accuracy": true,
+      "argument_accuracy": true,
+      "controller_executable_rate": true,
+      "no_next_tool_regression": true
+    },
+    "closed_loop": {
+      "at_least_two_of_three_accepted": true,
+      "no_invalid_policy_actions": true,
+      "no_tool_or_policy_errors": true
+    }
+  },
+  "all_passed": true
+}

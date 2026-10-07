@@ -1,0 +1,14 @@
+.DS_Store
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+qcal-agent-home/config.json
+qcal-agent-home/sessions/
+qcal-agent-home/reports/
+training-Nanbeige4.2-3B/cache/
+training-Nanbeige4.2-3B/runs/
+training-Nanbeige4.2-3B/checkpoints/
+training-Nanbeige4.2-3B/models/**/*.safetensors
+training-Nanbeige4.2-3B/releases/model-v1.0.0/*.tar.gz
+release-assets/

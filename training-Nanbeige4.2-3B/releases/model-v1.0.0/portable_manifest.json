@@ -1,0 +1,40 @@
+{
+  "schema": "qcal-portable-adapter-release-1.0",
+  "version": "1.0.0",
+  "scope": "Synthetic single-qubit research; no real-hardware or coupler validation",
+  "base_model_id": "Nanbeige/Nanbeige4.2-3B",
+  "base_config_sha256": "f6cb15b22847664f3a6049dc4b58fdd10f1650d112ac99a1da3d051f17c2ca19",
+  "tokenizer_sha256": {
+    "tokenizer.model": "fb41d04798b714520a9b075727b0226538b7330254299062742c50ec8374bc36",
+    "tokenizer_config.json": "3edfa64a0826a77e9412b9008f1febf3fe906a68fd616b6de4cd15897a8c8518",
+    "special_tokens_map.json": "b718fce2b7a8940ffeddc1e67f3b092cc0d13ac885c63a021528786f8c4cf6c0",
+    "added_tokens.json": "9e3b127a27647df2c353cc1e5500826f7cdbe8bd15a458e368bba8422e9719cf"
+  },
+  "adapter_model_sha256": "f321826dbf89e9563389fb83b68026a188695e7931f8aa239e316179d0b20922",
+  "adapter_config_sha256": "9973ce9f2a5e18123cb33615f93dcff524949f0972985c6aae5652f38acde7ac",
+  "bundle_sha256": "94b3433e74c663dbe79c6d28a261d913831198891a0e22e47d1b57b3aab69337",
+  "release_acceptance_sha256": "c3b619f1c146d336bfc5ff27304a1f42b4654af41d220a27234eecba03a5c2e2",
+  "source_release_manifest_sha256": "06aacb97fd5f83719befd288fc3d9ef1e3848b08744d63bd7e112054a1c7d33f",
+  "frozen_split_sha256": {
+    "test": "836e868f4371162f354375ee8f69d32319339896a6b623e7e97070d856a4f718",
+    "ood": "d1ea2aaad617967f9618d441920f140da45e189043655594dfdb974b47253aaf"
+  },
+  "metrics": {
+    "test": {
+      "sample_count": 160,
+      "valid_rate": 1.0,
+      "next_tool_correct_rate": 1.0,
+      "arguments_correct_rate": 0.9875,
+      "controller_executable_rate": 1.0
+    },
+    "ood": {
+      "sample_count": 160,
+      "valid_rate": 1.0,
+      "next_tool_correct_rate": 1.0,
+      "arguments_correct_rate": 1.0,
+      "controller_executable_rate": 1.0
+    }
+  },
+  "closed_loop_accepted": 3,
+  "closed_loop_episodes": 3
+}

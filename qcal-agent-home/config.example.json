@@ -1,0 +1,19 @@
+{
+  "policy": "hf",
+  "model": "/ABSOLUTE/PATH/TO/REPOSITORY/training-Nanbeige4.2-3B/models/Nanbeige4.2-3B",
+  "adapter": "/ABSOLUTE/PATH/TO/REPOSITORY/training-Nanbeige4.2-3B/models/qcal-agent-1.0.0-adapter",
+  "trust_remote_code": true,
+  "max_input_tokens": 20480,
+  "max_new_tokens": 1024,
+  "chat_max_new_tokens": 2048,
+  "decode_backend": "hf",
+  "prompt_profile": "skill",
+  "fit_update_tool": false,
+  "request_timeout": 600.0,
+  "seed": 20260903,
+  "noise_scale": 1.0,
+  "backend": "auto",
+  "simulation_profile": "nominal",
+  "max_steps": 30,
+  "max_tool_calls": 8
+}

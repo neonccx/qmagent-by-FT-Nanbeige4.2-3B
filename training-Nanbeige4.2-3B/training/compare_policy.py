@@ -1,0 +1,121 @@
+"""Compare complete paired evaluations without treating missing records as successes."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+
+
+def read_evaluation(directory):
+    config = json.loads((directory / "config.json").read_text())
+    rows = [json.loads(line) for line in (directory / "predictions.jsonl").read_text().splitlines()]
+    ids = config["selected_ids"]
+    if not ids or len(set(ids)) != len(ids):
+        raise ValueError("Empty or duplicated selected IDs")
+    if len(rows) != len(ids) or {row["id"] for row in rows} != set(ids):
+        raise ValueError("Evaluation is incomplete or contains duplicate/unexpected predictions")
+    scores = json.loads((directory / "controller_score.json").read_text())["records"]
+    if len(scores) != len(ids) or {row["id"] for row in scores} != set(ids):
+        raise ValueError("Controller scores are incomplete or duplicated")
+    indexed = {row["id"]: dict(row) for row in rows}
+    for score in scores:
+        indexed[score["id"]]["controller_executable"] = score["controller_executable"]
+    for row in indexed.values():
+        for key in ("valid", "next_tool_correct", "arguments_correct", "controller_executable"):
+            if type(row.get(key)) is not bool:
+                raise ValueError(f"Non-boolean evaluation flag: {key}")
+    return config, indexed
+
+
+def compare(baseline, adapted, *, comparison="weights"):
+    before, a = read_evaluation(baseline)
+    after, b = read_evaluation(adapted)
+    for key in ("protocol", "model", "test_sha256", "tokenizer_sha256", "selected_ids"):
+        if before.get(key) != after.get(key) or key not in before:
+            raise ValueError(f"Unmatched comparison input: {key}")
+    if comparison == "weights":
+        if before.get("context_transform_sha256") != after.get("context_transform_sha256"):
+            raise ValueError("Weight comparison requires identical context transformations")
+        if before.get("adapter") is not None or not after.get("adapter"):
+            raise ValueError("Expected an unmodified baseline and an explicit adapted checkpoint")
+        comparison_metadata = {"dimension": "weights", "baseline_adapter": None,
+                               "candidate_adapter": after["adapter"]}
+    elif comparison == "continuation":
+        if not before.get("adapter") or not after.get("adapter") or before["adapter"] == after["adapter"]:
+            raise ValueError("Continuation comparison requires two distinct explicit adapters")
+        for key in ("prompt_profile", "system_prompt_sha256"):
+            if before.get(key) != after.get(key):
+                raise ValueError(f"Continuation comparison requires identical {key}")
+        comparison_metadata = {"dimension": "adapter_continuation",
+                               "baseline_adapter": before["adapter"],
+                               "candidate_adapter": after["adapter"]}
+    elif comparison == "prompt":
+        if before.get("adapter") != after.get("adapter"):
+            raise ValueError("Prompt comparison requires identical checkpoint/adapter")
+        before_profile = before.get("prompt_profile") or "skill"
+        after_profile = after.get("prompt_profile")
+        if (before_profile, after_profile) not in {("skill", "minimal"), ("skill", "skill")}:
+            raise ValueError("Expected skill-to-minimal or skill revision prompt comparison")
+        if not after.get("system_prompt_sha256"):
+            raise ValueError("Minimal prompt hash is missing")
+        if before_profile == after_profile and (not before.get("system_prompt_sha256") or
+                before["system_prompt_sha256"] == after["system_prompt_sha256"]):
+            raise ValueError("Prompt revision requires two distinct recorded prompt hashes")
+        comparison_metadata = {
+            "dimension": "system_prompt_and_context" if before.get("context_transform_sha256") !=
+                after.get("context_transform_sha256") else "system_prompt",
+            "baseline_context_transform_sha256": before.get("context_transform_sha256"),
+            "candidate_context_transform_sha256": after.get("context_transform_sha256"),
+            "context_hash_note": "Legacy evaluation did not record its context transformation"
+                if before.get("context_transform_sha256") is None else None,
+            "baseline_profile": before_profile,
+            "candidate_profile": after_profile,
+            "baseline_system_prompt_sha256": before.get("system_prompt_sha256"),
+            "candidate_system_prompt_sha256": after["system_prompt_sha256"],
+            "baseline_hash_note": "Legacy skill evaluation predates explicit prompt hashing"
+                if before.get("system_prompt_sha256") is None else None,
+        }
+    else:
+        raise ValueError(f"Unknown comparison dimension: {comparison}")
+    ids = before["selected_ids"]
+    for identity in ids:
+        if a[identity]["expected"] != b[identity]["expected"]:
+            raise ValueError("Reference answers differ")
+    metrics = {}
+    for key in ("valid", "next_tool_correct", "arguments_correct", "controller_executable"):
+        improved = [i for i in ids if not a[i][key] and b[i][key]]
+        regressed = [i for i in ids if a[i][key] and not b[i][key]]
+        metrics[key] = dict(baseline=sum(a[i][key] for i in ids)/len(ids),
+                            adapted=sum(b[i][key] for i in ids)/len(ids),
+                            delta_percentage_points=100*(len(improved)-len(regressed))/len(ids),
+                            improved_ids=improved, regressed_ids=regressed)
+    by_action = {}
+    for action in sorted({a[i]["expected"]["next_tool"] for i in ids}):
+        group = [i for i in ids if a[i]["expected"]["next_tool"] == action]
+        by_action[action] = dict(count=len(group),
+            baseline_correct=sum(a[i]["next_tool_correct"] for i in group),
+            adapted_correct=sum(b[i]["next_tool_correct"] for i in group))
+    return dict(scope="Paired frozen-context diagnostic; does not measure closed-loop acceptance",
+                comparison=comparison_metadata,
+                sample_count=len(ids), adapter=after["adapter"], metrics=metrics, by_action=by_action,
+                test_sha256=before["test_sha256"],
+                input_sha256={f"{arm}/{name}": hashlib.sha256((directory/name).read_bytes()).hexdigest()
+                    for arm, directory in (("baseline", baseline), ("adapted", adapted))
+                    for name in ("config.json", "predictions.jsonl", "controller_score.json")})
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--baseline", type=Path, required=True)
+    parser.add_argument("--adapted", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--comparison", choices=("weights", "prompt", "continuation"), default="weights")
+    args = parser.parse_args()
+    report = compare(args.baseline, args.adapted, comparison=args.comparison)
+    with args.output.open("x") as stream:
+        json.dump(report, stream, indent=2, allow_nan=False)
+        stream.write("\n")
+    print(json.dumps({key: report[key] for key in ("scope", "sample_count", "metrics")}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

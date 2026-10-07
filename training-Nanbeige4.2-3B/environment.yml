@@ -1,0 +1,17 @@
+name: qcal-agent-training
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - scipy
+  - matplotlib
+  - pytest
+  - qutip>=5.2,<6
+  - pip
+  - pip:
+      - torch>=2.5
+      - transformers>=4.45,<5
+      - peft>=0.13
+      - accelerate>=1
+      - datasets>=3,<5

@@ -1,0 +1,23 @@
+{
+  "all_passed": true,
+  "protocol": "calibration-step-1.0",
+  "sample_counts": {
+    "train": 4637,
+    "validation": 782,
+    "test": 511,
+    "ood": 986
+  },
+  "frozen_evaluation_runtime_prompts_rebuilt": true,
+  "artifact_count": 6375,
+  "device_counts": {
+    "train": 48,
+    "validation": 8,
+    "test": 8,
+    "ood": 16
+  },
+  "tokenizer_checked": true,
+  "max_tokens": 9429,
+  "min_assistant_loss_tokens": 53,
+  "max_assistant_loss_tokens": 134,
+  "template_sha256": "ed118a3c5ddf1d24ffa43229de22bacd5b803be31acaafeb4c0fff0cefee551a"
+}
