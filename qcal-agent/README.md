@@ -1,6 +1,6 @@
 # QCal Agent
 
-QCal Agent 是面向超导量子单比特自动校准的完整第一版工程。一个仓库同时包含：
+QCal Agent 是面向超导量子单比特自动校准的运行时，包含：
 
 - 可审计的 Agent 状态机、严格工具协议、预算和回滚；
 - 可由物理模拟器切换到注册实验室适配器的采集与分析层；
@@ -11,7 +11,9 @@ QCal Agent 是面向超导量子单比特自动校准的完整第一版工程。
 正式训练使用的代码、数据、基座权重和 LoRA 已从运行仓库拆分到同级的
 `training-Nanbeige4.2-3B/`。普通 Agent 用户不需要下载该目录。
 
-本仓库已发布 `v1.0.0`，不要求用户理解历史实验版本。新 LoRA 已完成训练并通过配置的模拟数据发布门禁，便携 PEFT 包已在服务器打包和加载验证。模型卡、评测清单和下载附件独立发布在 [`qcal-agent-model`](https://github.com/neonccx/qcal-agent-model) 的 [v1.0.0 Release](https://github.com/neonccx/qcal-agent-model/releases/tag/v1.0.0)。代码版本号和模拟门禁均不代表已通过真机验收。旧数据和旧模型只用于内部对照，不进入第一版命名或默认配置。
+LoRA、模型卡、评测记录和下载附件发布在项目根目录及
+[`v1.0.0` Release](https://github.com/neonccx/qmagent-by-FT-Nanbeige4.2-3B/releases/tag/v1.0.0)。
+版本号和模拟评测结果不代表已经通过真机验收。
 
 ## 安全与科研边界
 
@@ -46,10 +48,10 @@ qm-agent run --policy rule --backend physical --output-dir runs/rule-demo
 
 ```bash
 qm-agent remote \
-  --host bishe-5090 \
-  --project /home/caochuangxin/bishe/qcal-agent \
-  --control-path ~/.ssh/qcal-agent-5090.sock \
-  --server-home /home/caochuangxin/bishe/qcal-agent-home
+  --host YOUR_SSH_HOST \
+  --project /opt/qmagent/qcal-agent \
+  --control-path ~/.ssh/qmagent-model.sock \
+  --server-home /opt/qmagent/qcal-agent-home
 qm-agent connect
 ```
 

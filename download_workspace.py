@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download the complete bishe workspace snapshot from the GitHub Release."""
+"""Download the complete QM Agent workspace from the GitHub Release."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from urllib.request import urlopen
 REPOSITORY = "neonccx/qmagent-by-FT-Nanbeige4.2-3B"
 TAG = "v1.0.0"
 ASSETS = [
-    "bishe-workspace.tar.zst.part-00",
-    "bishe-workspace.tar.zst.part-01",
-    "bishe-workspace.tar.zst.part-02",
-    "bishe-workspace.tar.zst.part-03",
+    "qmagent-workspace.tar.zst.part-00",
+    "qmagent-workspace.tar.zst.part-01",
+    "qmagent-workspace.tar.zst.part-02",
+    "qmagent-workspace.tar.zst.part-03",
     "SHA256SUMS",
     "FILE_MANIFEST.sha256",
 ]
